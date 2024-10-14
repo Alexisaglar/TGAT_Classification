@@ -48,7 +48,7 @@ def create_dataset(file):
                         node_features = torch.tensor(node_features, dtype=torch.float)
                         edge_features = torch.tensor(edge_features, dtype=torch.float)
                         edge_index = torch.tensor(edge_index, dtype=torch.long)
-                        targets = torch.tensor(target_bus, dtype=torch.float)
+                        targets = torch.tensor(target_bus, dtype=torch.long)
                         # print(targets.shape)
                         
                         # create data object

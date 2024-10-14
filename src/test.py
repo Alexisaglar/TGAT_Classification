@@ -8,11 +8,11 @@ def test_model(model, val_loader, criterion, device):
     with torch.no_grad():  # No gradients are needed
         for data, targets in val_loader:
             data = data.to(device)
-            targets = targets.view(-1,1)
-            targets = targets.to(device)
+            # targets = targets.view(-1,1)
+            targets = torch.cat([t.to(device).long() for t in targets])  # Ensure targets are LongTensor
 
             out, attention_weights = model(data)
-            loss = criterion(out, torch.argmax(targets, dim=1))
+            loss = criterion(out, targets)
             total_val_loss += loss.item()
 
             all_attention_weights.append(attention_weights)

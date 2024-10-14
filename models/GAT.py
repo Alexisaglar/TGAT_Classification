@@ -21,14 +21,14 @@ class GATNet(torch.nn.Module):
 
         X = self.conv_layer2(X, edge_index, edge_attr)
         X = F.elu(X)
-
+        
         X = self.conv_layer3(X, edge_index, edge_attr)
         X = F.elu(X)
 
         X, attention_weights = self.conv_layer4(X, edge_index, edge_attr, return_attention_weights=True)
 
         # X = F.log_softmax(X, dim=-1)
+        # print(f"Output logits shape: {X.shape}")  # Add this to debug
         
-        print(X.shape)
         return X, attention_weights
 
