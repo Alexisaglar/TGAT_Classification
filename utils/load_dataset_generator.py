@@ -16,14 +16,14 @@ import random
 # Constants
 re_configuration = False 
 network = nw.case33bw()
-NUM_NETWORKS_TO_SIMULATE = 40 
+NUM_NETWORKS_TO_SIMULATE = 10 
 
 class PowerFlowSimulator:
     def __init__(self, net):
         self.net = net
         self.load_factors = pd.DataFrame(data=[COMMERCIAL_LOAD_FACTOR, INDUSTRIAL_LOAD_FACTOR, RESIDENTIAL_LOAD_FACTOR]).T
         self.season_factor = pd.DataFrame(data=[WINTER_LOAD_FACTOR]).T
-        print(self.load_factors)
+        # print(self.load_factors)
         self.successful_nets = []
         self.all_results = {}
         self.original_loads = self.net.load[['p_mw', 'q_mvar']].copy()
@@ -136,9 +136,9 @@ class PowerFlowSimulator:
         self.net.load.loc[variable_NODE_TYPE[1:] == 'industrial', 'q_mvar'] *= INDUSTRIAL_LOAD_FACTOR[time_step]
         
         print('*' *  100)
-        print(f'Total residential nodes: {np.sum(variable_NODE_TYPE == 'residential')},\nTotal commercial nodes: {np.sum(variable_NODE_TYPE == 'commercial')},\nTotal industrial nodes: {np.sum(variable_NODE_TYPE == 'industrial')}')
-
-        print(f'Total p_mw: {self.net.load.p_mw.sum()}, Total q_mvar: {self.net.load.p_mw.sum()}')
+        # print(f'Total residential nodes: {np.sum(variable_NODE_TYPE == 'residential')},\nTotal commercial nodes: {np.sum(variable_NODE_TYPE == 'commercial')},\nTotal industrial nodes: {np.sum(variable_NODE_TYPE == 'industrial')}')
+        #
+        # print(f'Total p_mw: {self.net.load.p_mw.sum()}, Total q_mvar: {self.net.load.p_mw.sum()}')
         # self.net.load.loc[RESIDENTIAL_NODES[1:] == 1, 'q_mvar'] *= RESIDENTIAL_LOAD_FACTOR[time_step]
         # self.net.load.loc[COMMERCIAL_NODES[1:] == 1, 'q_mvar'] *= COMMERCIAL_LOAD_FACTOR[time_step]
         # self.net.load.loc[INDUSTRIAL_NODES[1:] == 1, 'q_mvar'] *= INDUSTRIAL_LOAD_FACTOR[time_step]
@@ -154,7 +154,7 @@ class PowerFlowSimulator:
         # plt.show()
 
     def save_results(self):
-        with h5py.File('data/load_classification_40_networks.h5', 'w') as f:
+        with h5py.File('data/load_classification_10_networks.h5', 'w') as f:
             for net_id, net_data in self.all_results.items():
                 net_group = f.create_group(f'network_{net_id}')
                 static_group = net_group.create_group('network_config')
@@ -164,8 +164,10 @@ class PowerFlowSimulator:
                 for season, time_step_data in net_data.items():
                     if season == 'network_config':
                         continue
+                    time.sleep(0.1)
                     season_group = net_group.create_group(f'season_{season}')
                     for time_step, results in time_step_data.items():
+                        print(f'network id: {net_id}, time step: {time_step}, season: {season}')
                         time_step_group = season_group.create_group(f'time_step_{time_step}')
                         time_step_group.create_dataset('res_bus', data=results['res_bus'])
                         time_step_group.create_dataset('res_line', data=results['res_line'])

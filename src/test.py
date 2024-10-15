@@ -11,12 +11,14 @@ def test_model(model, val_loader, criterion, device):
             # targets = targets.view(-1,1)
             targets = torch.cat([t.to(device).long() for t in targets])  # Ensure targets are LongTensor
 
-            out, attention_weights = model(data)
+            # out, attention_weights = model(data)
+            out = model(data)
             loss = criterion(out, targets)
             total_val_loss += loss.item()
 
-            all_attention_weights.append(attention_weights)
+            # all_attention_weights.append(attention_weights)
 
     average_val_loss = total_val_loss / len(val_loader)
-    return average_val_loss, all_attention_weights
+    # return average_val_loss, all_attention_weights
+    return average_val_loss
 

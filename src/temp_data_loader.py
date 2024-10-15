@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from torch_geometric.data import Data
 import h5py
+import time
 
 def load_network_data(file, network_key):
     with h5py.File(file, 'r') as f:
@@ -38,33 +39,40 @@ def create_dataset(file, seq_length=24):
                         time_step_features.append(node_features)
                     
                     # Convert the list of node features over time to a tensor
-                    time_step_features = np.stack(time_step_features, axis=0)  # Shape: (n_time_steps, n_nodes, 2)
+                    # time_step_features = np.stack(time_step_features, axis=0)  # Shape: (n_time_steps, n_nodes, 2)
 
                     # If there are fewer time steps than seq_length, skip this sequence
-                    if time_step_features.shape[0] < seq_length:
-                        continue
+                    # if time_step_features.shape[0] < seq_length:
+                    #     continue
                     
                     # Collect node feature sequences of length `seq_length`
-                    for i in range(time_step_features.shape[0] - seq_length + 1):
-                        node_feature_sequence = time_step_features[i:i + seq_length]  # Shape: (seq_length, n_nodes, 2)
-                        
-                        # Create edge index (remains constant for all time steps)
-                        edge_index = np.vstack((static_data['line'][:, 0], static_data['line'][:, 1])).astype(int)
-                        edge_features = static_data['line'][:, 2:5]  # Edge attributes (x, r, length)
+                    # for i in range(time_step_features.shape[0]):
+                    # print(time_step_features.shape)
+                    node_feature_sequence = time_step_features  # Shape: (seq_length, n_nodes, 2)
+                    # print(f'node_feature_sequence: seq_length: {seq_length}, i:{i}')
+                    
+                    # Create edge index (remains constant for all time steps)
+                    edge_index = np.vstack((static_data['line'][:, 0], static_data['line'][:, 1])).astype(int)
+                    edge_features = static_data['line'][:, 2:5]  # Edge attributes (x, r, length)
 
-                        # Extract target values (voltage magnitude and angle) for classification
-                        target_bus = static_data['bus'][:, 3]  # Class labels for each node
-                        
-                        # Convert to torch tensors
-                        node_feature_sequence = torch.tensor(node_feature_sequence, dtype=torch.float)
-                        edge_features = torch.tensor(edge_features, dtype=torch.float)
-                        edge_index = torch.tensor(edge_index, dtype=torch.long)
-                        targets = torch.tensor(target_bus, dtype=torch.long)
-                        
-                        # Create Data object (node features are now sequences over time)
-                        data = Data(x=node_feature_sequence, edge_index=edge_index, edge_attr=edge_features)
-                        data_list.append(data)
-                        target_list.append(targets)
+                    edge_index = edge_index - edge_index.min()  # Reindex to [0, 32]
+                    print(f'this is edge_index array: {edge_index}')
 
-                        # print(node_features.shape, node_feature_sequence.shape, edge_features.shape, )
+                    # Extract target values (voltage magnitude and angle) for classification
+                    target_bus = static_data['bus'][:, 3]  # Class labels for each node
+                    
+                    # Convert to torch tensors
+                    node_feature_sequence = torch.tensor(node_feature_sequence, dtype=torch.float)
+                    edge_features = torch.tensor(edge_features, dtype=torch.float)
+                    edge_index = torch.tensor(edge_index, dtype=torch.long)
+                    print(f'this is edge_index tensor: {edge_index}')
+                    targets = torch.tensor(target_bus, dtype=torch.long)
+                    
+                    # Create Data object (node features are now sequences over time)
+                    data = Data(x=node_feature_sequence, edge_index=edge_index, edge_attr=edge_features)
+                    print(edge_index)
+                    data_list.append(data)
+                    target_list.append(targets)
+
+                    # print(node_features.shape, node_feature_sequence.shape, edge_features.shape, )
     return data_list, target_list

@@ -1,6 +1,7 @@
 import torch
 from src.data_loader import *
-from models.GAT import GATNet  # Assuming your model is defined in train.py
+# from models.GAT import GATNet  # Assuming your model is defined in train.py
+from models.TGAT import TGAT  # Assuming your model is defined in train.py
 import numpy as np
 import time
 import pandas as pd
@@ -56,7 +57,7 @@ def load_data(net, time_step):
         
 # Load the trained model
 def load_model(model_path):
-    model = GATNet()  # Replace with your model class
+    model = TGAT(2, 4, 33)  # Replace with your model class
     model.load_state_dict(torch.load(model_path))
     model.eval()
     return model
