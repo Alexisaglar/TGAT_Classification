@@ -37,7 +37,7 @@ def main():
     # Load the dataset (ensure it contains temporal features)
     data_list, target_list = create_dataset("data/load_classification_100_networks.h5")
     data_train, data_val, data_test, target_train, target_val, target_test = split_data(data_list, target_list)
-    batch_size = 1  # Adjust according to your available memory
+    batch_size = 256  # Adjust according to your available memory
 
     # Create DataLoader instances for batching
     train_loader = DataLoader(list(zip(data_train, target_train)), batch_size=batch_size,shuffle=True)

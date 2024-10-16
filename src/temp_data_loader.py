@@ -4,6 +4,16 @@ from torch_geometric.data import Data
 import h5py
 import time
 
+normalize = True
+
+def normalize_min_max(tensor):
+    # Min-Max Normalization
+    return (tensor - tensor.min()) / (tensor.max() - tensor.min())
+
+def normalize_zscore(tensor):
+    # Z-score Normalization
+    return (tensor - tensor.mean()) / tensor.std()
+
 def load_network_data(file, network_key):
     with h5py.File(file, 'r') as f:
         net_group = f[network_key]
@@ -67,7 +77,11 @@ def create_dataset(file, seq_length=24):
                     edge_index = torch.tensor(edge_index, dtype=torch.long)
                     print(f'this is edge_index tensor: {edge_index}')
                     targets = torch.tensor(target_bus, dtype=torch.long)
-                    
+
+                    if normalize:
+                        node_feature_sequence = normalize_min_max(node_feature_sequence)  # or normalize_min_max
+                        edge_features = normalize_min_max(edge_features)  # or normalize_min_max
+                                        
                     # Create Data object (node features are now sequences over time)
                     data = Data(x=node_feature_sequence, edge_index=edge_index, edge_attr=edge_features)
                     print(edge_index)

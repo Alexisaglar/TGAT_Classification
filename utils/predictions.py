@@ -57,7 +57,16 @@ def load_data(net, time_step):
         
 # Load the trained model
 def load_model(model_path):
-    model = TGAT(2, 4, 33)  # Replace with your model class
+    in_channels = 2  # Number of input features per node (adjust as needed)
+    hidden_channels = 64  # Hidden size for GAT layers
+    n_nodes = 33  # Number of nodes in the graph (adjust to your dataset)
+    seq_length = 24  # Number of time steps (adjust to your temporal data)
+    n_classes = 4  # Number of output classes (adjust based on your task)
+    
+    # Initialize the model
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    model = TGAT(in_channels, hidden_channels, n_nodes, seq_length, n_classes).to(device)
+
     model.load_state_dict(torch.load(model_path))
     model.eval()
     return model
@@ -79,6 +88,7 @@ def main():
     for time_step in range(24):
         data, classes = load_data(network, time_step)  # Modify based on your data loader's function
         # Make predictions
+        print(data)
         predicted_classes = predict_classes(model, data)
 
         # Display the predictions

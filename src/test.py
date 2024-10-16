@@ -14,6 +14,7 @@ def test_model(model, val_loader, criterion, device):
             # out, attention_weights = model(data)
             out = model(data)
             loss = criterion(out, targets)
+            print(f'out: {out.shape}, targets: {targets.shape}')
             total_val_loss += loss.item()
 
             # all_attention_weights.append(attention_weights)
