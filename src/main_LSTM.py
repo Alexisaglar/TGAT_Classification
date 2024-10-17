@@ -1,15 +1,17 @@
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
-from torch_geometric.loader import DataLoader
+from torch.utils.data import DataLoader  # Updated to use torch.utils.data.DataLoader
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 
-# Import your dataset creation and model
+# Import your dataset creation function
 from src.temp_data_loader import create_dataset  # Your data loading function
-from models.TGAT import TGAT  # Your TemporalGAT model
-from src.train import train_model  # Your training and evaluation functions
-from src.test import test_model
+
+# Import the LSTM-only model
+from models.LSTM import LSTMNodeClassifierWithAttention # Your LSTM-only model
+
+# We'll define updated train and test functions below
 
 def split_data(data_list):
     # Split the dataset into training, validation, and test sets
@@ -30,6 +32,44 @@ def plot_performance(train_loss, val_loss):
     plt.grid(True)
     plt.show()
 
+def collate_fn(data_batch):
+    # Custom collate function to prepare batch data
+    # Since batch_size is 1, data_batch will be a list of length 1
+    data = data_batch[0]
+    X = data.x  # Shape: (seq_length, n_nodes, in_channels)
+    y = data.y  # Shape: (n_nodes,)
+    return X, y
+
+def train_model(model, data_loader, criterion, optimizer, device, epoch):
+    model.train()
+    total_loss = 0
+    for X, y in data_loader:
+        X = X.permute(1, 0, 2).to(device)  # Shape: (n_nodes, seq_length, in_channels)
+        y = y.to(device)  # Shape: (n_nodes,)
+
+        optimizer.zero_grad()
+        output = model(X)  # Output shape: (n_nodes, n_classes)
+        loss = criterion(output, y)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+    average_loss = total_loss / len(data_loader)
+    return average_loss
+
+def test_model(model, data_loader, criterion, device):
+    model.eval()
+    total_loss = 0
+    with torch.no_grad():
+        for X, y in data_loader:
+            X = X.permute(1, 0, 2).to(device)  # Shape: (n_nodes, seq_length, in_channels)
+            y = y.to(device)  # Shape: (n_nodes,)
+
+            output = model(X)  # Output shape: (n_nodes, n_classes)
+            loss = criterion(output, y)
+            total_loss += loss.item()
+    average_loss = total_loss / len(data_loader)
+    return average_loss
+
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"This training is using {device}")
@@ -37,12 +77,12 @@ def main():
     # Load the dataset
     data_list = create_dataset("data/load_classification_100_networks.h5")
     data_train, data_val, data_test = split_data(data_list)
-    batch_size = 1  # Adjust according to your available memory
+    batch_size = 1  # Since each data sample may have different sizes
 
-    # Create DataLoader instances
-    train_loader = DataLoader(data_train, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(data_val, batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(data_test, batch_size=batch_size, shuffle=False)
+    # Create DataLoader instances with custom collate_fn
+    train_loader = DataLoader(data_train, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+    val_loader = DataLoader(data_val, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+    test_loader = DataLoader(data_test, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
 
     # Determine the number of classes
     all_targets = torch.cat([data.y.view(-1) for data in data_train])
@@ -50,13 +90,13 @@ def main():
     print(f"Number of classes: {n_classes}")
 
     # Model parameters
-    in_channels = 2  # Number of input features per node
-    hidden_channels = 64  # Hidden size for GAT layers
-    n_nodes = 33  # Number of nodes in the graph
-    seq_length = 24  # Number of time steps
+    in_channels = 2       # Number of input features per node
+    hidden_size = 64      # Hidden size for LSTM
+    n_nodes = 33          # Number of nodes
+    seq_length = 24       # Number of time steps
     
     # Initialize the model
-    model = TGAT(in_channels, hidden_channels, n_nodes, n_classes).to(device)
+    model = LSTMNodeClassifierWithAttention(in_channels, hidden_size, n_classes).to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     criterion = torch.nn.CrossEntropyLoss()
@@ -87,7 +127,7 @@ def main():
             print(f"Early stopping triggered after {epoch + 1} epochs.")
             break
 
-        print(f"Epoch {epoch + 2}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+        print(f"Epoch {epoch + 1}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 
     # Plot performance
     plot_performance(train_losses, val_losses)
@@ -96,5 +136,6 @@ def main():
     model.load_state_dict(torch.load("checkpoints/best_model.pth"))
     test_loss = test_model(model, test_loader, criterion, device)
     print(f"Test Loss: {test_loss:.4f}")
+
 if __name__ == "__main__":
     main()

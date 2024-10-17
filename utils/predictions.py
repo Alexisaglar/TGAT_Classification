@@ -51,9 +51,9 @@ def load_data(net, time_step):
     edge_features = torch.tensor(edge_features, dtype=torch.float)
     edge_index = torch.tensor(edge_index, dtype=torch.long)
 
-    data = Data(x=node_features, edge_index= edge_index, edge_attr=edge_features)
+    data = Data(x=node_features, edge_index= edge_index, edge_attr=edge_features, y=target_classes)
 
-    return data, target_classes
+    return data
         
 # Load the trained model
 def load_model(model_path):
@@ -65,7 +65,7 @@ def load_model(model_path):
     
     # Initialize the model
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = TGAT(in_channels, hidden_channels, n_nodes, seq_length, n_classes).to(device)
+    model = TGAT(in_channels, hidden_channels, n_nodes, n_classes).to(device)
 
     model.load_state_dict(torch.load(model_path))
     model.eval()
@@ -86,7 +86,7 @@ def main():
 
     # Load your data (you might need to modify this based on your data format)
     for time_step in range(24):
-        data, classes = load_data(network, time_step)  # Modify based on your data loader's function
+        data = load_data(network, time_step)  # Modify based on your data loader's function
         # Make predictions
         print(data)
         predicted_classes = predict_classes(model, data)

@@ -1,25 +1,20 @@
 import torch
 
-def test_model(model, val_loader, criterion, device):
-    model.eval()  # Set the model to evaluation mode
-    total_val_loss = 0
-    all_attention_weights = []  # To collect attention weights from all batches
-   
-    with torch.no_grad():  # No gradients are needed
-        for data, targets in val_loader:
+def test_model(model, loader, criterion, device):
+    model.eval()
+    total_loss = 0
+
+    with torch.no_grad():
+        for data in loader:
             data = data.to(device)
-            # targets = targets.view(-1,1)
-            targets = torch.cat([t.to(device).long() for t in targets])  # Ensure targets are LongTensor
+            output = model(data)
+            target = data.y.to(device)
 
-            # out, attention_weights = model(data)
-            out = model(data)
-            loss = criterion(out, targets)
-            print(f'out: {out.shape}, targets: {targets.shape}')
-            total_val_loss += loss.item()
+            # Reshape for loss computation
+            output = output.view(-1, output.size(-1))
+            target = target.view(-1)
 
-            # all_attention_weights.append(attention_weights)
+            loss = criterion(output, target)
+            total_loss += loss.item() * data.num_graphs
 
-    average_val_loss = total_val_loss / len(val_loader)
-    # return average_val_loss, all_attention_weights
-    return average_val_loss
-
+    return total_loss / len(loader.dataset)
