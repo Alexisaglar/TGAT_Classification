@@ -51,17 +51,18 @@ def main():
 
     # Model parameters
     in_channels = 2  # Number of input features per node
-    hidden_channels = 64  # Hidden size for GAT layers
+    hidden_channels = 128  # Hidden size for GAT layers
     n_nodes = 33  # Number of nodes in the graph
     seq_length = 24  # Number of time steps
+    n_classes = 4
     
     # Initialize the model
-    model = TGAT(in_channels, hidden_channels, n_nodes, n_classes).to(device)
+    model = TGAT(in_channels, hidden_channels, n_classes).to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     criterion = torch.nn.CrossEntropyLoss()
 
-    patience = 15
+    patience = 15 
     best_val_loss = float("inf")
     epochs_no_improve = 0
     train_losses = []

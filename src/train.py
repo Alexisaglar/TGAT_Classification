@@ -20,7 +20,7 @@ def train_model(model, loader, criterion, optimizer, device, epoch):
         loss.backward()
         optimizer.step()
         total_loss += loss.item() * data.num_graphs
-        # torch.save(model.state_dict(), checkpoint_path.format(epoch=epoch+1))
+        torch.save(model.state_dict(), 'checkpoints/model_epoch_{epoch}.pth'.format(epoch=epoch+1))
 
     return total_loss / len(loader.dataset)
 

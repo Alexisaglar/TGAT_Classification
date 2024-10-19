@@ -28,14 +28,14 @@ class TGAT(torch.nn.Module):
         # GRU for temporal dependencies per node
         self.gru = GRU(
             input_size=hidden_channels,
-            hidden_size=128,
-            num_layers=1,
+            hidden_size=256,
+            num_layers=4,
             batch_first=True,
             bidirectional=True
         )
 
         # Fully connected layer for per-node classification
-        self.fc = Linear(128 * 2, n_classes)  # Multiply by 2 for bidirectional GRU
+        self.fc = Linear(256 * 2, n_classes)  # Multiply by 2 for bidirectional GRU
 
     def forward(self, data):
         X, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
@@ -62,9 +62,9 @@ class TGAT(torch.nn.Module):
 
         # Permute to get (n_nodes, seq_length, hidden_channels)
         node_embeddings = node_embeddings.permute(1, 0, 2)  # Shape: (33, 24, hidden_channels)
+        # print(node_embeddings.shape)
 
         # Process temporal dependencies per node using GRU
-        # Since batch_first=True, batch dimension is first
         output, h_n = self.gru(node_embeddings)  # output shape: (33, 24, 256), h_n shape: (2, 33, 128)
 
         # Concatenate the final hidden states from both directions
@@ -75,5 +75,6 @@ class TGAT(torch.nn.Module):
 
         # Pass through the fully connected layer for per-node classification
         out = self.fc(h_n_combined)  # Shape: (33, n_classes)
+
 
         return out
