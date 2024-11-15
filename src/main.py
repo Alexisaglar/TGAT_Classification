@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 
 # Import your dataset creation and model
-from src.temp_data_loader import create_dataset  # Your data loading function
+from src.data_loader import create_dataset  # Your data loading function
 from models.TGAT import TGAT  # Your TemporalGAT model
 from src.train import train_model  # Your training and evaluation functions
 from src.test import test_model
@@ -47,7 +47,7 @@ def main():
     # Determine the number of classes
     all_targets = torch.cat([data.y.view(-1) for data in data_train])
     n_classes = len(torch.unique(all_targets))
-    print(f"Number of classes: {n_classes}")
+    # print(f"Number of classes: {n_classes}")
 
     # Model parameters
     in_channels = 2  # Number of input features per node
