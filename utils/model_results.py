@@ -12,7 +12,7 @@ import seaborn as sns
 import pandas as pd
 
 # Import your dataset creation and model
-from src.temp_data_loader import create_dataset  # Your data loading function
+from src.data_loader import create_dataset  # Your data loading function
 from models.TGAT import TGAT  # Your TemporalGAT model
 from src.train import train_model  # Your training and evaluation functions
 from src.test import test_model
