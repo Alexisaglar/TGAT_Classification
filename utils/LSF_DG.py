@@ -1,64 +1,83 @@
 import pandapower as pp
 import pandapower.networks as pn
-import numpy as np
+import matplotlib.pyplot as plt
 
-# Step 1: Load the IEEE 33-bus system
-def create_33_bus_system():
-    net = pn.case33bw()
-    return net
-
-# Step 2: Calculate Loss Sensitivity Factors
-def calculate_lsf(net):
-    # Run a power flow analysis
+def calculate_total_losses(net):
+    """
+    Calculate the total active power loss in the system.
+    """
     pp.runpp(net)
-    
-    # Extract line power losses (active power losses in MW)
-    line_losses = net.res_line.pl_mw  # Active power loss on each line
-    from_buses = net.line.from_bus.values
-    print(from_buses)
-    to_buses = net.line.to_bus.values
-    
-    # Calculate total power losses at each bus
-    bus_losses = np.zeros(len(net.bus))
-    for i, (from_bus, to_bus) in enumerate(zip(from_buses, to_buses)):
-        bus_losses[from_bus] += line_losses[i]
-        bus_losses[to_bus] += line_losses[i]
-    
-    # Active power injections at buses
-    p_injected = net.res_bus.p_mw.values  # Active power injection at buses
-    
-    # Calculate LSF for each bus
-    lsf = np.zeros(len(bus_losses))
-    for i in range(len(bus_losses)):
-        if p_injected[i] != 0:  # Avoid division by zero
-            lsf[i] = bus_losses[i] / p_injected[i]
+    total_losses = net.res_line['pl_mw'].sum()
+    return total_losses
+
+def add_pv_system(net, bus_id, pv_power):
+    """
+    Add a PV system (static generator) to the specified bus in the network.
+    """
+    pp.create_sgen(net, bus=bus_id, p_mw=pv_power, q_mvar=0, name=f"PV_{bus_id}")
+
+def reset_pv_systems(net):
+    """
+    Remove all existing PV systems (sgen elements) from the network.
+    """
+    net.sgen.drop(net.sgen.index, inplace=True)
+
+def compare_pv_placement_per_bus_load(net):
+    """
+    Compare the impact of placing a PV system at each bus on total power losses.
+    The PV power is equal to the total load of the bus.
+    """
+    # Calculate base-case losses
+    base_loss = calculate_total_losses(net)
+    print(f"Base-case total losses (no PV): {base_loss:.6f} MW\n")
+
+    # Compare losses for PV placement at each bus
+    results = {}
+    for bus_id in net.bus.index:
+        # Get the total load at the bus
+        bus_load = net.load.loc[net.load['bus'] == bus_id, 'p_mw'].sum()
+        if bus_load > 0:  # Only consider buses with load
+            # Reset PV systems and add PV at the current bus
+            reset_pv_systems(net)
+            add_pv_system(net, bus_id, pv_power=bus_load)
+            
+            # Calculate total losses
+            total_loss = calculate_total_losses(net)
+            results[bus_id] = total_loss
+            print(f"Total losses with PV (Load = {bus_load:.6f} MW) at Bus {bus_id}: {total_loss:.6f} MW")
         else:
-            lsf[i] = 0
+            results[bus_id] = None  # No PV if no load at the bus
 
-    return lsf
+    # Reset to base case
+    reset_pv_systems(net)
+    return base_loss, results
 
-# Step 3: Identify Optimal DG Placement
-def optimal_dg_placement(lsf):
-    # Sort buses by LSF (higher LSF indicates higher potential loss reduction)
-    sorted_indices = np.argsort(lsf)[::-1]  # Descending order
-    optimal_buses = sorted_indices[:5]  # Select top 5 buses for DG placement
-    return optimal_buses
+def plot_results(base_loss, results):
+    """
+    Plot the impact of PV placement on total power losses.
+    """
+    buses = [bus for bus, loss in results.items() if loss is not None]
+    losses = [loss for loss in results.values() if loss is not None]
 
-# Main script
-if __name__ == "__main__":
-    # Create the 33-bus system
-    net = create_33_bus_system()
-    
-    # Calculate Loss Sensitivity Factors
-    lsf = calculate_lsf(net)
-    print("Loss Sensitivity Factors (LSF):", lsf)
-    
-    # Find optimal DG placement
-    optimal_buses = optimal_dg_placement(lsf)
-    print("Optimal buses for DG placement:", optimal_buses)
+    plt.figure(figsize=(10, 6))
+    plt.bar(buses, losses, color='skyblue', label='With PV')
+    plt.axhline(base_loss, color='red', linestyle='--', label='Base-case Loss')
+    plt.xlabel('Bus Number')
+    plt.ylabel('Total Power Losses (MW)')
+    plt.title(f'Impact of PV Allocation on Total Losses (PV Power = Bus Load)')
+    plt.legend()
+    plt.grid()
+    plt.show()
 
-    
-    print("Line Losses (MW):", net.res_line.pl_mw)
-    print("Bus Losses (MW):", bus_losses)
-    print("Power Injections (MW):", p_injected)
-    print("Loss Sensitivity Factors (LSF):", lsf)
+# Load the IEEE 33-bus system
+net = pn.case33bw()
+
+# Compare PV placement at all buses
+base_loss, results = compare_pv_placement_per_bus_load(net)
+
+# Find the best bus for PV placement
+best_bus = min((bus for bus in results if results[bus] is not None), key=results.get)
+print(f"\nThe best bus to place the PV system is Bus {best_bus}.\n")
+
+# Plot the results
+plot_results(base_loss, results)
