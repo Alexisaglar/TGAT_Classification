@@ -88,6 +88,8 @@ class PowerFlowSimulator:
 
         vectorized_mapping = np.vectorize(CLASS_MAPPING.get)
         bus_data['node_type'] = vectorized_mapping(variable_NODE_TYPE)
+        bus_data['grid_factor'] =  np.round(np.random.uniform(0.1,0.5), 2)
+        print(bus_data)
         
         # Save network configuration data
         seasonal_results = {'network_config': {
@@ -110,7 +112,10 @@ class PowerFlowSimulator:
                         'res_line': deepcopy(self.net.res_line[self.net.line['in_service']].values)
                     }
                     time_step_results[time_step] = lfa_results
-                    plt.plot(self.net.res_bus.vm_pu)
+                    # plt.plot(self.net.res_bus.vm_pu)
+                    # plt.plot(self.net.res_bus.p_mw)
+                    # plt.show()
+
 
                 except pp.LoadflowNotConverged:
                     print(f'Load flow did not converge for time step {time_step}, season {season}.')
@@ -154,7 +159,7 @@ class PowerFlowSimulator:
         # plt.show()
 
     def save_results(self):
-        with h5py.File('data/load_classification_100_networks.h5', 'w') as f:
+        with h5py.File('data/size_dataset_100.h5', 'w') as f:
             for net_id, net_data in self.all_results.items():
                 net_group = f.create_group(f'network_{net_id}')
                 static_group = net_group.create_group('network_config')
@@ -164,7 +169,7 @@ class PowerFlowSimulator:
                 for season, time_step_data in net_data.items():
                     if season == 'network_config':
                         continue
-                    time.sleep(0.1)
+                    # time.sleep(0.1)
                     season_group = net_group.create_group(f'season_{season}')
                     for time_step, results in time_step_data.items():
                         print(f'network id: {net_id}, time step: {time_step}, season: {season}')
