@@ -39,10 +39,45 @@ def test_model(model, loader, criterion, device):
     with torch.no_grad():
         for data in loader:
             data = data.to(device)
-            print(data)
+            y = data.y.cpu().numpy()
+
+            total_load_step = []
+            sum_load = data.x.cpu().numpy()
+            # print(sum_load[:,:,0])
+            for i in range(24):
+                load = sum_load[:,:,0][i].sum()
+                total_load_step.append(load)
+
+            # print(total_load_step)
+            grid_profile = total_load_step * np.array(sum_load[:,:,1][1].min())
+            lowest_x = np.argmin(grid_profile)
+
+
+            # print(sum_load[:,:,1][1].min())
+            plt.plot(total_load_step)
+            plt.plot(grid_profile)
+
             output = model(data).squeeze()  # Output shape: (1,) -> scalar
             target = data.y.to(device).squeeze()  # Target shape: (1,) -> scalar
 
+            plt.scatter(lowest_x, output.cpu(), color='red', label='Predicted Point')
+            plt.scatter(lowest_x, target.cpu(), color='blue', label='Real Point')
+            plt.annotate(f'({lowest_x}, {output.cpu():.2f})',
+                         xy=(lowest_x, output.cpu()),
+                         xytext=(lowest_x + 1, output.cpu() + 0.1),
+                         arrowprops=dict(facecolor='black', arrowstyle='->'))
+            plt.annotate(f'({lowest_x}, {target.cpu():.2f})',
+                         xy=(lowest_x, target.cpu()),
+                         xytext=(lowest_x + 1, target.cpu() + 0.1),
+                         arrowprops=dict(facecolor='black', arrowstyle='->'))
+            
+            # Add legend and labels
+            plt.legend()
+            plt.xlabel('X-axis')
+            plt.ylabel('Y-axis')
+            plt.title('Graph with Lowest Point Highlighted')
+            # # Show the plot
+            plt.show()
             # Calculate the loss
             loss = criterion(output, target)
             total_loss += loss.item()
