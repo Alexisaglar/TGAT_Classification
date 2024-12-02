@@ -17,6 +17,7 @@ import random
 re_configuration = False 
 network = nw.case33bw()
 NUM_NETWORKS_TO_SIMULATE = 100
+seasonal_data = 
 
 class PowerFlowSimulator:
     def __init__(self, net):
@@ -159,7 +160,7 @@ class PowerFlowSimulator:
         # plt.show()
 
     def save_results(self):
-        with h5py.File('data/size_dataset_100.h5', 'w') as f:
+        with h5py.File('data/seasonal_100_network_dataset.h5', 'w') as f:
             for net_id, net_data in self.all_results.items():
                 net_group = f.create_group(f'network_{net_id}')
                 static_group = net_group.create_group('network_config')

@@ -35,7 +35,8 @@ def main():
     print(f"This training is using {device}")
 
     # Load the dataset
-    data_list = create_dataset("data/size_dataset_100.h5")
+    # data_list = create_dataset("data/size_dataset_100.h5")
+    data_list = create_dataset("data/power_potential_networks.h5")
     data_train, data_val, data_test = split_data(data_list)
     batch_size = 1  # Adjust according to your available memory
 
@@ -50,10 +51,10 @@ def main():
     # print(f"Number of classes: {n_classes}")
 
     # Model parameters
-    in_channels = 2  # Number of input features per node
+    in_channels = 6  # Number of input features per node
     hidden_channels = 128  # Hidden size for GAT layers
     n_nodes = 33  # Number of nodes in the graph
-    seq_length = 24  # Number of time steps
+    seq_length = 96  # Number of time steps
     n_classes = 4
     
     # Initialize the model

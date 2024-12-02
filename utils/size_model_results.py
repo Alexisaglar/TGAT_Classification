@@ -82,10 +82,10 @@ def test_model(model, loader, criterion, device):
 criterion = torch.nn.CrossEntropyLoss()
 
 # Load dataset
-data_list = create_dataset("data/load_classification_100_networks.h5")
+data_list = create_dataset("data/power_potential_networks.h5")
 print(data_list)
 data_train, data_val, data_test = split_data(data_list)
-batch_size = 1  # Adjust according to your available memory
+batch_size = 16  # Adjust according to your available memory
 
 # Create DataLoader instances
 train_loader = DataLoader(data_train, batch_size=batch_size, shuffle=True)
@@ -97,17 +97,17 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"This training is using {device}")
 
 # Model parameters
-in_channels = 2  # Number of input features per node
+in_channels = 6  # Number of input features per node
 hidden_channels = 128  # Hidden size for GAT layers
 n_nodes = 33  # Number of nodes in the graph
-seq_length = 24  # Number of time steps
+seq_length = 96  # Number of time steps
 n_classes = 4  # Number of classes
 
 # Initialize the model
 model = TGAT(in_channels, hidden_channels, n_classes).to(device)
 
 # Load the model state
-model.load_state_dict(torch.load("checkpoints/best_model.pth"))
+model.load_state_dict(torch.load("checkpoints/best_model_size.pth"))
 
 # Run the test function
 test_loss = test_model(model, test_loader, criterion, device)

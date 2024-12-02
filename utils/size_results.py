@@ -15,9 +15,13 @@ from models.TGAT_size import TGAT
 
 # Function to plot prediction vs. actual
 def plot_predictions(y_true, y_pred):
+    y_true_flat = y_true.flatten()
+    y_pred_flat = y_pred.flatten()
     plt.figure(figsize=(8, 6))
-    plt.scatter(y_true, y_pred, alpha=0.7)
-    plt.plot([y_true.min(), y_true.max()], [y_true.min(), y_true.max()], color="red", linestyle="--")
+    plt.scatter(y_true_flat, y_pred_flat, alpha=0.7)
+    min_val = min(y_true_flat.min(), y_pred_flat.min())
+    max_val = max(y_true_flat.max(), y_pred_flat.max())
+    plt.plot([min_val, max_val], [min_val, max_val], color="red", linestyle="--")
     plt.xlabel("True Values")
     plt.ylabel("Predicted Values")
     plt.title("Prediction vs. True Values")
@@ -39,76 +43,93 @@ def test_model(model, loader, criterion, device):
     with torch.no_grad():
         for data in loader:
             data = data.to(device)
-            y = data.y.cpu().numpy()
 
-            total_load_step = []
-            sum_load = data.x.cpu().numpy()
-            # print(sum_load[:,:,0])
-            for i in range(24):
-                load = sum_load[:,:,0][i].sum()
-                total_load_step.append(load)
+            # Get model predictions
+            output = model(data)  # Output shape: (n_classes,)
+            target = data.y.to(device)  # Target shape: (n_classes,)
 
-            # print(total_load_step)
-            grid_profile = total_load_step * np.array(sum_load[:,:,1][1].min())
-            lowest_x = np.argmin(grid_profile)
+            # Ensure output and target have correct shapes
+            output = output.view(-1)
+            target = target.view(-1)
 
-
-            # print(sum_load[:,:,1][1].min())
-            plt.plot(total_load_step)
-            plt.plot(grid_profile)
-
-            output = model(data).squeeze()  # Output shape: (1,) -> scalar
-            target = data.y.to(device).squeeze()  # Target shape: (1,) -> scalar
-
-            plt.scatter(lowest_x, output.cpu(), color='red', label='Predicted Point')
-            plt.scatter(lowest_x, target.cpu(), color='blue', label='Real Point')
-            plt.annotate(f'({lowest_x}, {output.cpu():.2f})',
-                         xy=(lowest_x, output.cpu()),
-                         xytext=(lowest_x + 1, output.cpu() + 0.1),
-                         arrowprops=dict(facecolor='black', arrowstyle='->'))
-            plt.annotate(f'({lowest_x}, {target.cpu():.2f})',
-                         xy=(lowest_x, target.cpu()),
-                         xytext=(lowest_x + 1, target.cpu() + 0.1),
-                         arrowprops=dict(facecolor='black', arrowstyle='->'))
-            
-            # Add legend and labels
-            plt.legend()
-            plt.xlabel('X-axis')
-            plt.ylabel('Y-axis')
-            plt.title('Graph with Lowest Point Highlighted')
-            # # Show the plot
-            plt.show()
             # Calculate the loss
             loss = criterion(output, target)
             total_loss += loss.item()
 
             # Collect predictions and targets
-            all_preds.append(output.cpu().item())
-            all_targets.append(target.cpu().item())
+            all_preds.append(output.cpu().numpy())
+            all_targets.append(target.cpu().numpy())
+
+            # --- Calculate Total Load ---
+            total_load_step = []
+            sum_load = data.x.cpu().numpy()  # Adjust shape as necessary
+            # Assuming sum_load shape is [num_timesteps, num_nodes, num_features]
+            num_timesteps = sum_load.shape[0]
+            for i in range(num_timesteps):
+                # Sum over nodes for each timestep
+                load = sum_load[i, :, 0].sum()  # Assuming the 0th feature is load
+                total_load_step.append(load)
+
+            # --- Calculate Grid Profile ---
+            # Assuming the 1st feature (index 1) is relevant for grid profile calculation
+            min_value = sum_load[:, :, 1].min()
+            grid_profile = np.array(total_load_step) * min_value
+
+            # --- Find the Lowest Point in Grid Profile ---
+            lowest_x = np.argmin(grid_profile)
+
+            # --- Plot Total Load and Grid Profile ---
+            plt.figure(figsize=(10, 6))
+            plt.plot(range(num_timesteps), total_load_step, label='Total Load')
+            plt.plot(range(num_timesteps), grid_profile, label='Grid Profile')
+            plt.scatter(lowest_x, grid_profile[lowest_x], color='red', label='Lowest Point')
+            plt.annotate(f'({lowest_x}, {grid_profile[lowest_x]:.2f})',
+                         xy=(lowest_x, grid_profile[lowest_x]),
+                         xytext=(lowest_x + 1, grid_profile[lowest_x] + 0.1),
+                         arrowprops=dict(facecolor='black', arrowstyle='->'))
+            plt.xlabel('Time Step')
+            plt.ylabel('Load')
+            plt.title('Total Load and Grid Profile Over Time')
+            plt.legend()
+            plt.show()
+
+            # --- Plot Predicted vs. True Values for This Sample ---
+            plt.figure(figsize=(10, 6))
+            plt.plot(range(n_classes), target.cpu().numpy(), label='True')
+            plt.plot(range(n_classes), output.cpu().numpy(), label='Predicted')
+            plt.xlabel('Output Index')
+            plt.ylabel('Value')
+            plt.title('Predicted vs True Values for Sample')
+            plt.legend()
+            plt.show()
 
     # Convert lists to numpy arrays for evaluation
-    all_preds = np.array(all_preds)
-    all_targets = np.array(all_targets)
+    all_preds = np.vstack(all_preds)  # Shape: (num_samples, n_classes)
+    all_targets = np.vstack(all_targets)
+
+    # Flatten for metric calculations
+    all_preds_flat = all_preds.flatten()
+    all_targets_flat = all_targets.flatten()
 
     # Calculate regression metrics
-    mse = mean_squared_error(all_targets, all_preds)
-    mae = mean_absolute_error(all_targets, all_preds)
-    r2 = r2_score(all_targets, all_preds)
+    mse = mean_squared_error(all_targets_flat, all_preds_flat)
+    mae = mean_absolute_error(all_targets_flat, all_preds_flat)
+    r2 = r2_score(all_targets_flat, all_preds_flat)
 
     print(f"Mean Squared Error: {mse:.4f}")
     print(f"Mean Absolute Error: {mae:.4f}")
     print(f"R² Score: {r2:.4f}")
 
-    # Plot predictions vs. true values
-    plot_predictions(all_targets, all_preds)
+    # Plot predictions vs. true values across all samples
+    plot_predictions(all_targets_flat, all_preds_flat)
 
-    return total_loss / len(loader.dataset)
+    return total_loss / len(loader)
 
 # Define the criterion
 criterion = torch.nn.MSELoss()
 
 # Load dataset
-data_list = create_dataset("data/sizing_dataset.h5")
+data_list = create_dataset("data/power_potential_networks.h5")
 data_train, data_val, data_test = split_data(data_list)
 batch_size = 1  # Adjust according to your available memory
 
@@ -122,13 +143,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"This training is using {device}")
 
 # Model parameters
-in_channels = 2  # Number of input features per node
+in_channels = 6  # Number of input features per node
 hidden_channels = 128  # Hidden size for GAT layers
-n_classes = 4 
+n_classes = 16  # Changed from 4 to 16 to match the new output size
 
 # Initialize the model
-# model = TGAT(in_channels, hidden_channels).to(device)
-model = TGAT(in_channels, hidden_channels, n_classes).to(device)
+model = TGAT(in_channels, hidden_channels, 4).to(device)
 
 # Load the model state
 model.load_state_dict(torch.load("checkpoints/best_model_size.pth"))

@@ -34,7 +34,7 @@ class TGAT(torch.nn.Module):
         )
 
         # Fully connected layer for graph-level scalar regression
-        self.fc = Linear(256 * 2, 1)  # Single scalar output
+        self.fc = Linear(256 * 2, 16)  # Single scalar output
 
     def forward(self, data):
         X, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr

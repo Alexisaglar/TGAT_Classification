@@ -32,12 +32,12 @@ for t, load_factor in enumerate(hourly_load_factors):
             continue
         
         # Inject 1 MW at the bus
-        pp.create_sgen(net, bus=bus, p_mw=0.74, q_mvar=0.0)
+        pp.create_sgen(net, bus=bus, p_mw=0.7, q_mvar=0.0)
         pp.runpp(net)
         new_losses = net.res_line.pl_mw.sum()
         
         # Compute LSF
-        lsf = (initial_losses - new_losses) /0.74
+        lsf = (initial_losses - new_losses) /0.7 
         lsf_results.at[bus, t] = lsf
         
         # Remove the injected generator
