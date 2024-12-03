@@ -3,6 +3,8 @@ import torch
 from torch_geometric.data import Data
 import h5py
 import time
+import matplotlib.pyplot as plt
+import pandas as pd
 
 normalize = True
 
@@ -48,6 +50,7 @@ def create_dataset(file, seq_length=24):
 
                     time_step_features = []
                     time_step_load_sums = []
+                    time_step_grid_req = []
                     for time_step_key in sorted(season_group.keys(), key=lambda x: int(x.split('_')[-1])):
                         time_step_group = season_group[time_step_key]
 
@@ -59,34 +62,81 @@ def create_dataset(file, seq_length=24):
                         # remove negative load from slack bus
                         loads = np.where(loads > 0, loads, 0) 
                         grid_factor = static_data['bus'][:, 4:5]  
-                        pv_potential_t = static_data['pv_potential'][time_step, start_col:end_col]
+                        pv_potential_t = static_data['pv_potential'][time_step, season::4]
+                        # print(pd.DataFrame(static_data['pv_potential']).iloc[:,::4])
+                        print(pv_potential_t)
                         # repeat same values for all buses
                         pv_potential_buses = np.tile(pv_potential_t, (33,1))
                         node_features = np.hstack((loads, grid_factor, pv_potential_buses))
 
 
                         # Calculate load sum (p) scaled by grid factor
-                        load_sum = np.sum(loads * grid_factor)  # Single scalar value
+                        load_sum = np.sum(loads)  # Single scalar value
+                        grid_required = np.sum(loads * grid_factor)  # Single scalar value
                         
                         time_step_features.append(node_features)
                         time_step_load_sums.append(load_sum)
+                        time_step_grid_req.append(grid_required)
 
-                load_pv_potential = np.array(time_step_load_sums)[np.newaxis,:] * static_data['pv_potential'][:, start_col:end_col].T
-                season_pv_potential.append(load_pv_potential)
+
+
+                remain_load = np.array(time_step_load_sums) - np.array(time_step_grid_req)
+                # print(static_data['pv_potential'][np.argmin(remain_load), season::4].T)
+                # load_pv_potential = remain_load[np.where(remain_load.min())] / static_data['pv_potential'][np.argmin(remain_load), season::4].T 
+                max_pv_potentials = np.max(static_data['pv_potential'][:, season::4].T, axis=1)
+                indices_max_pv_potentials = np.argmax(static_data['pv_potential'][:, season::4].T, axis=1)
+                
+                for i in range(indices_max_pv_potentials.shape[0]):
+                    load_pv_potential = remain_load[indices_max_pv_potentials[i]] / max_pv_potentials[i]
+                    season_pv_potential.append(load_pv_potential)
+                    print(i)
+                    # plt.plot(season)
+
+                # load_pv_potential = remain_load / static_data['pv_potential'][:, season::4].T 
+                # load_pv_potential[np.isinf(load_pv_potential)] = 0
+                # print(load_pv_potential)
+
+                # plt.plot(remain_load)
+                # plt.plot(time_step_grid_req)
+                # plt.plot(time_step_load_sums)
+                # plt.show()
+                # print(load_pv_potential)
+                # load_pv_potential[np.isinf(load_pv_potential)] = 0
+                # print(static_data['pv_potential'][:, start_col:end_col].T)
+                # print(remain_load)
+                # print(load_pv_potential[0])
+                # plt.plot(remain_load)
+                # plt.plot(time_step_load_sums)
+                # plt.plot(time_step_grid_req)
+                # print(load_pv_potential)
+                # plt.plot(load_pv_potential[0])
+                # plt.plot(load_pv_potential[1])
+                # plt.plot(load_pv_potential[2])
+                # plt.plot(load_pv_potential[3])
+                # plt.show()
+                # time.sleep(10)
+                # load_pv_potential = np.array(time_step_load_sums)[np.newaxis,:] / static_data['pv_potential'][:, start_col:end_col].T
+                # print(load_pv_potential)
+                print(season_pv_potential)
+                # time.sleep(10)
                 # seasonal_pv_potential = np.sum(seasonal_pv_potential,axis=1)
                 # print(season_pv_potential)
                 season_load_sums.append(time_step_load_sums)
                 season_features.append(time_step_features) 
             # time.sleep(5)
-            print(np.shape(season_pv_potential))
+            # print(np.shape(season_pv_potential))
+            # print(load_pv_potential)
+            # time.sleep(10)
+            print(season_pv_potential)
             target = []
-            season_pv_potential = np.array(season_pv_potential)
-            for season in range(season_pv_potential.shape[0]):
-                for technology in range(season_pv_potential.shape[1]):
-                    max_value = np.max(season_pv_potential[season, technology, :])
-                    print(max_value)
-                    target.append(max_value)
-
+            target = np.divide(season_pv_potential , 100)
+            # season_pv_potential = np.array(season_pv_potential)
+            # for season in range(season_pv_potential.shape[0]):
+            #     for technology in range(season_pv_potential.shape[1]):
+            #         max_value = np.min(season_pv_potential[season, technology, :])
+            #         print(max_value)
+            #         target.append(max_value)
+            #
             print(target)
             season_features = np.stack(season_features, axis=0)
             seasons = 4
