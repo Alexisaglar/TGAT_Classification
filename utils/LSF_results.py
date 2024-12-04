@@ -10,8 +10,8 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import pandas as pd
 
 # Import your dataset creation and model
-from src.size_data_loader import create_dataset  
-from models.TGAT_size import TGAT  
+from src.LSF_data_loader import create_dataset  
+from models.TGAT_LSF import TGAT  
 
 # Function to plot prediction vs. actual
 def plot_predictions(y_true, y_pred):
@@ -95,8 +95,8 @@ def test_model(model, loader, criterion, device):
 
             # --- Plot Predicted vs. True Values for This Sample ---
             plt.figure(figsize=(10, 6))
-            plt.plot(range(n_classes), target.cpu().numpy(), label='True')
-            plt.plot(range(n_classes), (output.cpu().numpy()), label='Predicted')
+            plt.plot(range(33), target.cpu().numpy(), label='True')
+            plt.plot(range(33), output.cpu().numpy(), label='Predicted')
             plt.xlabel('Output Index')
             plt.ylabel('Value')
             plt.title('Predicted vs True Values for Sample')
@@ -129,7 +129,7 @@ def test_model(model, loader, criterion, device):
 criterion = torch.nn.MSELoss()
 
 # Load dataset
-data_list = create_dataset("data/power_potential_networks.h5")
+data_list = create_dataset("data/full_100_network_dataset.h5")
 data_train, data_val, data_test = split_data(data_list)
 batch_size = 1  # Adjust according to your available memory
 
@@ -143,7 +143,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"This training is using {device}")
 
 # Model parameters
-in_channels = 6  # Number of input features per node
+in_channels = 2  # Number of input features per node
 hidden_channels = 128  # Hidden size for GAT layers
 n_classes = 16  # Changed from 4 to 16 to match the new output size
 

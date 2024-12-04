@@ -17,7 +17,7 @@ import random
 re_configuration = False 
 network = nw.case33bw()
 NUM_NETWORKS_TO_SIMULATE = 100
-seasonal_data = 
+# seasonal_data = 
 
 class PowerFlowSimulator:
     def __init__(self, net):
@@ -99,6 +99,8 @@ class PowerFlowSimulator:
             'bus': deepcopy(bus_data[self.net.bus['in_service']].values),
         }}
 
+        delta_p = 0.1  # MW, small perturbation for LSF calculation
+
         for season in self.season_factor.columns:
             time_step_results = {}
             for time_step in range(self.load_factors.shape[0]):
@@ -112,10 +114,38 @@ class PowerFlowSimulator:
                         'res_bus': deepcopy(self.net.res_bus.values),
                         'res_line': deepcopy(self.net.res_line[self.net.line['in_service']].values)
                     }
+
+                    # Calculate total system losses
+                    total_loss = self.net.res_line.pl_mw.sum() 
+                    lsf_buses = np.zeros(len(self.net.bus))
+                    load_buses = self.net.load.bus.values
+
+                    # Calculate LSFs for each bus
+                    for bus_idx in self.net.bus.index:
+                        if bus_idx in load_buses:
+                            # Perturb the active power at this bus
+                            self.net.load.loc[self.net.load.bus == bus_idx, 'p_mw'] += delta_p
+                            try:
+                                pp.runpp(self.net, algorithm='nr', calculate_voltage_angles=True)
+                                new_total_loss = self.net.res_line.pl_mw.sum() 
+                                delta_loss = new_total_loss - total_loss
+                                lsf = delta_loss / delta_p
+                                lsf_buses[bus_idx] = lsf
+                            except pp.LoadflowNotConverged:
+                                print(f'Load flow did not converge for bus {bus_idx} perturbation at time step {time_step}, season {season}.')
+                                lsf_buses[bus_idx] = np.nan
+                            finally:
+                                # Reset the load at this bus
+                                self.net.load.loc[self.net.load.bus == bus_idx, 'p_mw'] -= delta_p
+                        else:
+                            lsf_buses[bus_idx] = 0.0
+
+
+                    # Add LSFs to results
+                    lfa_results['res_sensitivity'] = lsf_buses.copy()
+                    print(lfa_results['res_sensitivity'])
+
                     time_step_results[time_step] = lfa_results
-                    # plt.plot(self.net.res_bus.vm_pu)
-                    # plt.plot(self.net.res_bus.p_mw)
-                    # plt.show()
 
 
                 except pp.LoadflowNotConverged:
@@ -160,7 +190,7 @@ class PowerFlowSimulator:
         # plt.show()
 
     def save_results(self):
-        with h5py.File('data/seasonal_100_network_dataset.h5', 'w') as f:
+        with h5py.File('data/full_100_network_dataset.h5', 'w') as f:
             for net_id, net_data in self.all_results.items():
                 net_group = f.create_group(f'network_{net_id}')
                 static_group = net_group.create_group('network_config')
@@ -177,6 +207,7 @@ class PowerFlowSimulator:
                         time_step_group = season_group.create_group(f'time_step_{time_step}')
                         time_step_group.create_dataset('res_bus', data=results['res_bus'])
                         time_step_group.create_dataset('res_line', data=results['res_line'])
+                        time_step_group.create_dataset('res_sensitivity', data=results['res_sensitivity'])
                         # time_step_group.create_dataset('load', data=results['load'])
 
 if __name__ == '__main__':
